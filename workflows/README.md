@@ -1,323 +1,286 @@
-# 🚀 종합 포럼 분석 - 스타트업 아이디어 생성기
+# 🏭 n8n Workflows Collection
 
-여러 개발자 포럼(Reddit, Hacker News, Dev.to)에서 실시간 트렌드를 수집하고 AI로 분석하여 상위 10개 스타트업 아이디어를 자동 생성하는 종합 시스템입니다.
+> Production-ready n8n workflows for AI-powered automation
 
-## 📊 시스템 개요
-
-### 워크플로우 구조
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  데이터 수집 레이어 (병렬)                │
-├─────────────────────────────────────────────────────────┤
-│  Reddit API  │  Hacker News RSS  │  Dev.to API         │
-│  (100개)     │  (50개)           │  (100개)            │
-└──────┬───────┴──────┬─────────────┴──────┬──────────────┘
-       │              │                     │
-       ▼              ▼                     ▼
-┌─────────────────────────────────────────────────────────┐
-│               데이터 처리 레이어                         │
-├─────────────────────────────────────────────────────────┤
-│  파싱 → 병합 → 중복 제거 → 필터링 (상위 100개 선정)     │
-└──────────────────────┬──────────────────────────────────┘
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│                  AI 분석 레이어                          │
-├─────────────────────────────────────────────────────────┤
-│  1. 트렌드 분석 Agent (Gemini 2.0)                      │
-│     - 주요 트렌드 추출                                   │
-│     - Pain Point 식별                                   │
-│     - 시장 기회 발굴                                     │
-│                                                          │
-│  2. 아이디어 생성 Agent (Gemini 2.0)                    │
-│     - 10개 스타트업 아이디어 생성                       │
-│     - 실현 가능성 기반                                   │
-│                                                          │
-│  3. 아이디어 평가 Agent (Gemini 2.0)                    │
-│     - 각 아이디어 투자 심사                             │
-│     - 종합 점수 산정                                     │
-└──────────────────────┬──────────────────────────────────┘
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│                 리포트 생성 & 저장                       │
-├─────────────────────────────────────────────────────────┤
-│  - 상위 10개 아이디어 선정                               │
-│  - 주간 트렌드 리포트 생성                               │
-│  - Notion 데이터베이스 자동 저장                         │
-└─────────────────────────────────────────────────────────┘
-```
-
-## 🎯 주요 기능
-
-### 1. **멀티 소스 데이터 수집**
-- **Reddit**: r/webdev, r/programming, r/SaaS, r/startups, r/entrepreneur
-- **Hacker News**: 상위 점수 게시글 (50점+, 댓글 10개+)
-- **Dev.to**: 주간 인기 게시글 (리액션 20개+)
-
-### 2. **AI 기반 트렌드 분석**
-- 주요 기술 트렌드 식별
-- 개발자 Pain Point 추출
-- 떠오르는 기술 발견
-- 시장 기회 평가
-
-### 3. **스타트업 아이디어 생성**
-- 실제 Pain Point 기반
-- 기술적 실현 가능성 검증
-- 시장 규모 및 수익성 분석
-- 차별화 포인트 명확화
-
-### 4. **투자 심사급 평가**
-- 시장 매력도
-- 기술 실현성
-- 수익 가능성
-- 경쟁 우위
-- 종합 점수 (10점 만점)
-
-### 5. **자동 리포트 생성**
-- 주간 트렌드 요약
-- Top 10 아이디어 순위
-- 실행 권장사항
-- Notion 자동 저장
-
-## 📋 사용 방법
-
-### 1. 워크플로우 Import
-
-n8n에서 `startup-idea-comprehensive-analysis.json` 파일을 import합니다.
-
-```bash
-# n8n 워크플로우 디렉토리에 복사
-cp startup-idea-comprehensive-analysis.json ~/.n8n/workflows/
-```
-
-### 2. 필수 설정
-
-#### A. Notion 연동
-1. Notion Integration 생성 (https://www.notion.so/my-integrations)
-2. n8n Credentials에 Notion API 키 등록
-3. 워크플로우의 "Notion 페이지 생성" 노드 설정
-   - Parent Page URL 업데이트
-
-#### B. Google Gemini API
-1. Google AI Studio에서 API 키 발급 (https://makersuite.google.com/app/apikey)
-2. n8n Credentials에 등록
-3. "Google Gemini Chat Model" 노드에 연결
-
-### 3. 실행 옵션
-
-#### 옵션 1: 주간 자동 실행
-- **기본 설정**: 매주 월요일 오전 9시 자동 실행
-- 수정: "주간 실행 트리거" 노드에서 스케줄 변경 가능
-
-#### 옵션 2: 수동 실행
-- "수동 실행" 트리거 클릭
-- 즉시 분석 시작
-
-## 📊 출력 데이터 구조
-
-### Notion 리포트 예시
-
-```
-📊 주간 스타트업 아이디어 분석 리포트
-📅 2024-01-15 | 분석기간: 최근 7일
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🎯 핵심 요약
-✅ 총 10개 아이디어 분석 완료
-⭐ 평균 종합 점수: 7.5/10
-🏆 최고 점수: AI 기반 코드 리뷰 자동화 SaaS
-✨ 추천 아이디어: 8개
-
-📈 데이터 수집 통계
-• 총 수집: 250개 게시글
-• Reddit: 100개
-• Hacker News: 50개
-• Dev.to: 100개
-• 고유 게시글: 187개
-
-🔥 주요 트렌드
-1. AI 코드 생성 도구 (급상승, 언급: 높음)
-2. 서버리스 아키텍처 (안정적, 언급: 중간)
-3. 개발자 생산성 도구 (증가, 언급: 높음)
-4. Web3/블록체인 (감소, 언급: 낮음)
-5. 엣지 컴퓨팅 (신규, 언급: 중간)
-
-⚠️ 핵심 Pain Points
-1. 코드 리뷰 시간 소요 (심각도: 9/10, 영향: 중소 개발팀)
-2. 배포 자동화 복잡성 (심각도: 8/10, 영향: 스타트업)
-3. 테스트 작성 부담 (심각도: 7/10, 영향: 모든 개발팀)
-4. API 문서화 어려움 (심각도: 7/10, 영향: B2B 개발사)
-5. 모니터링 설정 복잡도 (심각도: 6/10, 영향: 소규모 팀)
-
-🚀 상위 10대 아이디어
-▼ 1. AI 기반 코드 리뷰 자동화 SaaS (8.5/10)
-  📊 종합 평가: 강력 추천
-  💰 투자 의견: 적극_추천
-  📈 예상 성공률: 75%
-
-  점수
-  • 시장 매력도: 9/10
-  • 기술 실현성: 9/10
-  • 수익 가능성: 8/10
-  • 경쟁 우위: 7/10
-
-  ✅ 강점
-  • 명확한 pain point (코드 리뷰 시간 70% 절감)
-  • 기술 스택 검증됨 (LangChain, OpenAI)
-  • 구독 모델 안정적
-
-  ⚠️ 약점
-  • 경쟁사 증가 (GitHub Copilot, Tabnine)
-  • 초기 마케팅 비용 높음
-
-  💡 권장사항
-  ☐ MVP 3개월 내 출시
-  ☐ 베타 테스터 50명 확보
-  ☐ YC 지원 검토
-
-▼ 2. 개발자용 노코드 API 모니터링 (7.8/10)
-  ...
-
-📋 실행 권장사항
-🥇 최우선: AI 기반 코드 리뷰 자동화 SaaS
-🥈 2순위: 개발자용 노코드 API 모니터링
-🥉 3순위: 스타트업용 배포 자동화 플랫폼
-
-⚡ 즉시 실행 가능:
-• AI 기반 코드 리뷰 자동화 SaaS
-• 스타트업용 배포 자동화 플랫폼
-• 테스트 자동 생성 도구
-```
-
-## 🔧 커스터마이징
-
-### 데이터 소스 추가
-
-Reddit 서브레딧 변경:
-```javascript
-// "Reddit 데이터 수집" 노드
-url: "https://www.reddit.com/r/YOUR_SUBREDDIT.json?limit=100&t=week"
-```
-
-### AI 모델 변경
-
-Gemini 모델 옵션:
-- `gemini-2.0-flash-exp` (기본, 빠름)
-- `gemini-2.0-pro-exp` (고성능)
-- `gemini-1.5-flash` (저비용)
-
-```javascript
-// "Google Gemini Chat Model" 노드
-modelName: "models/gemini-2.0-pro-exp"
-```
-
-### 아이디어 개수 조정
-
-10개 대신 5개 생성:
-```javascript
-// "아이디어 생성 Agent" 프롬프트
-"실현 가능한 스타트업 아이디어 5개를 생성하세요"
-```
-
-### 필터링 기준 변경
-
-Reddit 점수 기준:
-```javascript
-// "Reddit 파싱" 노드
-.filter(p => {
-  return post.score > 100 && post.num_comments > 20; // 기준 상향
-})
-```
-
-## 📈 성능 최적화
-
-### 병렬 처리
-- 3개 데이터 소스 동시 수집 (3배 빠름)
-- 각 파싱 단계 독립 실행
-
-### 비용 절감
-- Gemini Flash 모델 사용 (GPT-4 대비 90% 저렴)
-- 주간 1회 실행으로 API 호출 최소화
-
-### 데이터 품질
-- 중복 제거 (URL 기준)
-- 점수 기준 필터링 (상위 100개만)
-- 신뢰도 높은 소스 우선
-
-## 🚨 문제 해결
-
-### API 호출 실패
-
-**증상**: Reddit/Dev.to API 403 에러
-
-**해결**:
-```javascript
-// User-Agent 헤더 추가
-headers: {
-  "User-Agent": "n8n-startup-analyzer/1.0"
-}
-```
-
-### JSON 파싱 에러
-
-**증상**: AI 출력이 백틱 포함
-
-**해결**: 파서 노드가 자동 정제 (이미 구현됨)
-
-### Notion 블록 추가 실패
-
-**증상**: 100개 이상 블록 에러
-
-**해결**: Notion API는 최대 100개 블록 제한
-```javascript
-// 블록을 청크로 나누어 여러 요청으로 분할
-const chunks = chunkArray(blocks, 100);
-```
-
-## 📚 참고 자료
-
-### API 문서
-- [Reddit API](https://www.reddit.com/dev/api)
-- [Hacker News API](https://github.com/HackerNews/API)
-- [Dev.to API](https://developers.forem.com/api)
-- [Notion API](https://developers.notion.com/)
-- [Google Gemini API](https://ai.google.dev/docs)
-
-### 관련 워크플로우
-- `startup-idea-generator-form.json` - 개발자 프로필 기반 버전
-- 향후 추가: 한국 커뮤니티 특화 버전
-
-## 🎯 로드맵
-
-### v1.1 (예정)
-- [ ] 한국 개발 커뮤니티 추가 (OKKY, Inflearn)
-- [ ] Slack 알림 통합
-- [ ] 주간 비교 리포트 (트렌드 변화)
-- [ ] 경쟁사 자동 분석
-
-### v1.2 (예정)
-- [ ] GitHub Trending 통합
-- [ ] Product Hunt 데이터 수집
-- [ ] 자동 시장 조사 기능
-- [ ] MVP 자동 생성 제안
-
-## 📄 라이선스
-
-MIT License
-
-## 👥 기여
-
-Pull Request 환영합니다!
-
-개선 아이디어:
-- 새로운 데이터 소스 추가
-- AI 프롬프트 최적화
-- 리포트 템플릿 개선
-- 번역 품질 향상
+[![n8n](https://img.shields.io/badge/n8n-workflows-orange)](https://n8n.io)
+[![Workflows](https://img.shields.io/badge/workflows-2-brightgreen)]()
+[![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ---
 
-**만든이**: n8n-factory
-**버전**: 1.0
-**최종 업데이트**: 2024-01-15
+## 📚 Available Workflows
+
+### 1. 🔬 Design Pattern Deep Research
+
+**Location**: [`design-pattern-research/`](./design-pattern-research/)
+
+Automated research system that generates comprehensive Notion documentation for any React/JavaScript design pattern.
+
+**Features**:
+- 🔍 Google search with AI-optimized queries
+- 🌐 Intelligent web scraping (5 authoritative sources)
+- 🤖 Dual AI analysis (content + code generation)
+- 📝 Auto-generated Notion pages with structured content
+
+**Tech Stack**: Google Gemini API, SerpAPI, Notion API, cheerio
+
+**Execution Time**: 60-90 seconds
+
+**Use Cases**: Learning new technologies, team documentation, content creation
+
+👉 **[View Details](./design-pattern-research/README.md)**
+
+---
+
+### 2. 🚀 Startup Idea Comprehensive Analysis
+
+**Location**: [`startup-idea-analysis/`](./startup-idea-analysis/)
+
+Multi-source trend analysis system that generates top 10 VC-evaluated startup ideas from developer forums.
+
+**Features**:
+- 📊 Multi-source data collection (Reddit, HN, Dev.to)
+- 🔥 AI trend analysis and pain point extraction
+- 💡 10 startup ideas with market validation
+- 🎯 Investment-grade evaluation (10-point scale)
+- 📋 Comprehensive weekly reports in Notion
+
+**Tech Stack**: Google Gemini 2.0, Reddit API, Hacker News API, Dev.to API, Notion API
+
+**Execution Time**: 5-8 minutes
+
+**Use Cases**: Idea generation, market research, investment scouting
+
+👉 **[View Details](./startup-idea-analysis/README.md)**
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+All workflows require:
+- ✅ n8n instance (cloud or self-hosted)
+- ✅ Google Gemini API key ([Get free key](https://makersuite.google.com/app/apikey))
+- ✅ Notion integration token ([Create integration](https://www.notion.so/my-integrations))
+
+### Installation Steps
+
+1. **Choose a workflow** from the list above
+2. **Navigate** to its directory
+3. **Read** the specific README for detailed setup
+4. **Import** the JSON file to n8n
+5. **Configure** API credentials
+6. **Execute** and enjoy automation! 🎉
+
+---
+
+## 📊 Workflows Comparison
+
+| Feature | Design Pattern Research | Startup Idea Analysis |
+|---------|------------------------|----------------------|
+| **Execution Time** | 60-90 seconds | 5-8 minutes |
+| **AI Agent Count** | 2 (analysis + code) | 3 (trend + idea + eval) |
+| **Data Sources** | Google Search | Reddit, HN, Dev.to |
+| **Output Format** | Single Notion page | Comprehensive report |
+| **Use Case** | Technical learning | Business ideation |
+| **Cost (Free Tier)** | 33/month | Unlimited |
+| **Complexity** | Medium | High |
+
+---
+
+## 🔧 Common Setup
+
+### 1. Google Gemini API
+
+**All workflows use Gemini for AI processing.**
+
+**Setup**:
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Click "Create API Key"
+3. Copy the key (starts with `AIza...`)
+4. Add to n8n credentials as "Google Gemini API"
+
+**Free Tier**: 15 requests/minute, 1500 requests/day
+
+---
+
+### 2. Notion API
+
+**All workflows save results to Notion.**
+
+**Setup**:
+1. Visit [Notion Integrations](https://www.notion.so/my-integrations)
+2. Click "New integration"
+3. Name it "n8n Automation Bot"
+4. Copy "Internal Integration Token"
+5. **Share your target page** with this integration
+6. Copy the page ID from URL:
+   ```
+   https://www.notion.so/workspace/PAGE_ID?...
+                                 ^^^^^^^^^ (32 chars)
+   ```
+
+**Free Tier**: Unlimited requests
+
+---
+
+## 📁 Directory Structure
+
+```
+workflows/
+├── README.md                          # This file (index)
+│
+├── design-pattern-research/
+│   ├── design-pattern-research-workflow.json
+│   ├── README.md                      # Workflow details
+│   └── SETUP-GUIDE.md                 # Detailed setup
+│
+└── startup-idea-analysis/
+    ├── startup-idea-comprehensive-analysis.json
+    └── README.md                      # Workflow details
+```
+
+---
+
+## 🎯 Recommended Learning Path
+
+### Beginner
+**Start here**: Design Pattern Research
+- Simpler workflow (2 AI agents)
+- Shorter execution time
+- Clear input/output
+- Learn: Web scraping, AI prompting, Notion API
+
+### Intermediate
+**Next step**: Startup Idea Analysis
+- Complex multi-source data collection
+- Advanced AI agent orchestration
+- Learn: Parallel processing, data deduplication, structured analysis
+
+---
+
+## 🔐 Best Practices
+
+### 1. API Key Management
+- ✅ Use n8n's built-in credential management
+- ❌ Never hardcode keys in workflow JSON
+- ✅ Use environment variables for production
+
+### 2. Rate Limiting
+- Add "Wait" nodes between API calls
+- Respect free tier limits
+- Monitor usage in API dashboards
+
+### 3. Error Handling
+- Enable error workflows
+- Add retry logic for network failures
+- Log errors to monitoring service
+
+### 4. Cost Optimization
+- Use Gemini Flash (90% cheaper than GPT-4)
+- Schedule workflows during off-peak hours
+- Cache results when possible
+
+---
+
+## 🐛 Common Issues
+
+### Issue: "cheerio is not defined"
+
+**Workflows affected**: Design Pattern Research
+
+**Solution**:
+```bash
+# Self-hosted n8n
+docker exec -it n8n npm install cheerio
+```
+
+### Issue: Gemini rate limit exceeded
+
+**Workflows affected**: All
+
+**Solution**:
+- Add 10-second "Wait" node between Gemini calls
+- Or upgrade to paid tier
+
+### Issue: Notion "validation_error"
+
+**Workflows affected**: All
+
+**Solution**:
+- Verify integration is shared with target page
+- Check page ID is correct (32 characters)
+- Ensure all text fields are strings
+
+---
+
+## 🗺️ Roadmap
+
+### Upcoming Workflows
+
+- [ ] **AI Meeting Summarizer** - Transcribe → Summarize → Action Items
+- [ ] **GitHub Issue Triager** - Auto-label, prioritize, assign
+- [ ] **Content Repurposing Engine** - Blog → Twitter thread → LinkedIn post
+- [ ] **Competitor Tracker** - Monitor pricing, features, announcements
+- [ ] **Code Review Automator** - Analyze PRs, suggest improvements
+
+**Vote for next workflow**: [Open an issue](https://github.com/kkyada11/n8n-factory/issues)
+
+---
+
+## 🤝 Contributing
+
+Have improvements? Found a bug?
+
+1. Test changes with 3+ different inputs
+2. Update README if workflow changes
+3. Document new nodes
+4. Share your workflow!
+
+**Contribution ideas**:
+- Add new data sources
+- Optimize AI prompts
+- Improve error handling
+- Translate documentation
+- Create video tutorials
+
+---
+
+## 📄 License
+
+MIT License - Free to use, modify, and distribute.
+
+**Attribution**: If you share publicly, please credit this repository.
+
+---
+
+## 📞 Support
+
+**Need help?**
+1. Check individual workflow READMEs
+2. Review n8n execution logs
+3. Test nodes individually (right-click → Execute Node)
+4. Open an issue in this repository
+
+**Questions or feedback?**
+- Open an issue
+- Share your success stories!
+- Suggest new workflows
+
+---
+
+## 🙏 Acknowledgments
+
+**Built with**:
+- [n8n](https://n8n.io) - Workflow automation platform
+- [Google Gemini](https://ai.google.dev/) - AI/LLM API
+- [Notion](https://notion.so) - Documentation & knowledge base
+
+**Inspired by**: The n8n community and real-world automation needs
+
+---
+
+**Built with ❤️ for the automation community**
+
+*Last updated: 2025-11-14*
