@@ -1,0 +1,693 @@
+{
+  "name": "🔥 종합 포럼 분석 - 스타트업 아이디어 생성기",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": 1,
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "schedule-weekly",
+      "name": "주간 실행 트리거",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [100, 300],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "수동 실행",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [100, 500],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "https://www.reddit.com/r/webdev+programming+SaaS+startups+entrepreneur.json?limit=100&t=week",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-startup-analyzer/1.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "reddit-api",
+      "name": "Reddit 데이터 수집",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [400, 200],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "https://hnrss.org/newest?points=50&comments=10",
+        "options": {}
+      },
+      "id": "hackernews-rss",
+      "name": "Hacker News RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "position": [400, 400],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "https://dev.to/api/articles?per_page=100&top=7",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "devto-api",
+      "name": "Dev.to 데이터 수집",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [400, 600],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reddit 데이터 파싱\nconst data = $input.first().json;\n\nif (!data || !data.data || !data.data.children) {\n  return [];\n}\n\nconst posts = data.data.children\n  .filter(p => {\n    const post = p.data;\n    return post.score > 50 && post.num_comments > 10 && !post.is_video;\n  })\n  .map(p => {\n    const post = p.data;\n    return {\n      source: 'Reddit',\n      title: post.title,\n      content: post.selftext || '',\n      url: `https://reddit.com${post.permalink}`,\n      score: post.score,\n      comments: post.num_comments,\n      created: new Date(post.created_utc * 1000).toISOString(),\n      subreddit: post.subreddit,\n      category: post.link_flair_text || 'General'\n    };\n  });\n\nreturn posts.map(post => ({ json: post }));"
+      },
+      "id": "reddit-parser",
+      "name": "Reddit 파싱",
+      "type": "n8n-nodes-base.code",
+      "position": [700, 200],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hacker News RSS 파싱\nconst items = $input.all();\n\nconst posts = items.map(item => {\n  const data = item.json;\n  return {\n    source: 'Hacker News',\n    title: data.title || '',\n    content: data.contentSnippet || data.description || '',\n    url: data.link || '',\n    score: 0,\n    comments: 0,\n    created: data.isoDate || new Date().toISOString(),\n    category: data.categories?.[0] || 'Tech'\n  };\n});\n\nreturn posts.map(post => ({ json: post }));"
+      },
+      "id": "hn-parser",
+      "name": "Hacker News 파싱",
+      "type": "n8n-nodes-base.code",
+      "position": [700, 400],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dev.to 데이터 파싱\nconst data = $input.first().json;\n\nif (!Array.isArray(data)) {\n  return [];\n}\n\nconst posts = data\n  .filter(article => article.positive_reactions_count > 20)\n  .map(article => {\n    return {\n      source: 'Dev.to',\n      title: article.title,\n      content: article.description || '',\n      url: article.url,\n      score: article.positive_reactions_count,\n      comments: article.comments_count,\n      created: article.published_at,\n      tags: article.tag_list || [],\n      category: article.tag_list?.[0] || 'Development'\n    };\n  });\n\nreturn posts.map(post => ({ json: post }));"
+      },
+      "id": "devto-parser",
+      "name": "Dev.to 파싱",
+      "type": "n8n-nodes-base.code",
+      "position": [700, 600],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge-sources",
+      "name": "데이터 소스 병합",
+      "type": "n8n-nodes-base.merge",
+      "position": [1000, 400],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// 데이터 중복 제거 및 정제\nconst allItems = $input.all();\nconst posts = allItems.map(item => item.json);\n\n// URL 기준 중복 제거\nconst uniquePosts = [];\nconst seenUrls = new Set();\n\nposts.forEach(post => {\n  if (!seenUrls.has(post.url)) {\n    seenUrls.add(post.url);\n    uniquePosts.push(post);\n  }\n});\n\n// 점수 기준 정렬\nuniqueePosts.sort((a, b) => b.score - a.score);\n\n// 상위 100개만 선택\nconst topPosts = uniquePosts.slice(0, 100);\n\n// 통계 정보\nconst stats = {\n  total_collected: posts.length,\n  unique_posts: uniquePosts.length,\n  reddit_count: posts.filter(p => p.source === 'Reddit').length,\n  hn_count: posts.filter(p => p.source === 'Hacker News').length,\n  devto_count: posts.filter(p => p.source === 'Dev.to').length,\n  top_posts: topPosts.length,\n  collection_date: new Date().toISOString()\n};\n\nreturn [{\n  json: {\n    posts: topPosts,\n    stats: stats\n  }\n}];"
+      },
+      "id": "deduplicate",
+      "name": "중복 제거 및 정제",
+      "type": "n8n-nodes-base.code",
+      "position": [1300, 400],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=당신은 기술 트렌드 분석 전문가입니다.\n\n다음 개발자 포럼 게시글들을 분석하여 **주간 기술 트렌드 리포트**를 작성하세요.\n\n수집된 데이터:\n- 총 게시글 수: {{ $json.stats.total_collected }}\n- Reddit: {{ $json.stats.reddit_count }}개\n- Hacker News: {{ $json.stats.hn_count }}개\n- Dev.to: {{ $json.stats.devto_count }}개\n\n주요 게시글:\n{{ JSON.stringify($json.posts.slice(0, 50), null, 2) }}\n\n다음 JSON 구조로만 응답하세요:\n{\n  \"report_date\": \"2024-01-15\",\n  \"주요_트렌드\": [\n    {\"트렌드\": \"AI 코드 생성 도구\", \"언급_빈도\": \"높음\", \"성장세\": \"급상승\"},\n    {\"트렌드\": \"서버리스 아키텍처\", \"언급_빈도\": \"중간\", \"성장세\": \"안정적\"}\n  ],\n  \"핵심_페인포인트\": [\n    {\"문제\": \"코드 리뷰 시간 소요\", \"심각도\": \"9\", \"영향_범위\": \"중소 개발팀\"},\n    {\"문제\": \"배포 자동화 복잡성\", \"심각도\": \"8\", \"영향_범위\": \"스타트업\"}\n  ],\n  \"떠오르는_기술\": [\n    {\"기술명\": \"Rust\", \"관심도\": \"8\", \"채택률_변화\": \"증가\"},\n    {\"기술명\": \"Bun.js\", \"관심도\": \"7\", \"채택률_변화\": \"신규\"}\n  ],\n  \"인기_주제\": [\n    {\"주제\": \"LLM 통합\", \"게시글_수\": \"15\", \"평균_반응\": \"긍정적\"},\n    {\"주제\": \"개발자 생산성\", \"게시글_수\": \"12\", \"평균_반응\": \"중립\"}\n  ],\n  \"시장_기회\": [\n    {\"영역\": \"개발자 도구\", \"기회_점수\": \"9\", \"경쟁_수준\": \"중간\"},\n    {\"영역\": \"AI SaaS\", \"기회_점수\": \"8\", \"경쟁_수준\": \"높음\"}\n  ]\n}\n\n중요:\n1. JSON만 출력 (백틱 없이)\n2. 모든 텍스트는 한국어로\n3. 점수는 문자열 \"1-10\"",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "trend-analysis-agent",
+      "name": "트렌드 분석 Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [1600, 300],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=당신은 스타트업 기회 발굴 전문가입니다.\n\n트렌드 분석 결과:\n{{ $json.cleaned }}\n\n이 데이터를 기반으로 **실현 가능한 스타트업 아이디어 10개**를 생성하세요.\n\n조건:\n1. 실제 pain point 해결\n2. 기술적으로 구현 가능\n3. 시장 규모 충분\n4. 차별화 포인트 명확\n\nJSON 배열로 응답:\n[\n  {\n    \"순위\": \"1\",\n    \"아이디어_제목\": \"AI 기반 코드 리뷰 자동화 SaaS\",\n    \"핵심_컨셉\": \"GitHub PR 자동 분석 및 개선 제안\",\n    \"해결_문제\": \"코드 리뷰 시간 70% 절감\",\n    \"타겟_시장\": \"중소 개발팀 (10-50명)\",\n    \"기술_스택\": \"Python, LangChain, FastAPI, React\",\n    \"비즈니스_모델\": \"월 $99-499 구독\",\n    \"차별화_요소\": \"팀 코딩 스타일 학습 및 맞춤 제안\",\n    \"시장_규모\": \"$5억 (글로벌)\",\n    \"실현_가능성\": \"9\",\n    \"혁신성_점수\": \"8\",\n    \"수익성_점수\": \"7\"\n  }\n]\n\n중요:\n1. 정확히 10개 아이디어\n2. JSON 배열만 출력\n3. 한국어로 작성\n4. 점수는 문자열",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "idea-generation-agent",
+      "name": "아이디어 생성 Agent (10개)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [2200, 300],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "jsCode": "// JSON 정제\nconst data = $input.first().json.output;\n\nif (!data || typeof data !== 'string') {\n  return [{ json: { success: false, error: 'Invalid input' } }];\n}\n\nlet cleaned = data\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\ntry {\n  return [{ json: { success: true, cleaned: JSON.parse(cleaned) } }];\n} catch (error) {\n  return [{ json: { success: false, error: error.message, raw: cleaned } }];\n}"
+      },
+      "id": "trend-parser",
+      "name": "트렌드 분석 Parser",
+      "type": "n8n-nodes-base.code",
+      "position": [1900, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// JSON 정제 및 배열 분리\nconst data = $input.first().json.output;\n\nif (!data || typeof data !== 'string') {\n  return [{ json: { success: false, error: 'Invalid input' } }];\n}\n\nlet cleaned = data\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\ntry {\n  const ideas = JSON.parse(cleaned);\n  \n  if (!Array.isArray(ideas)) {\n    return [{ json: { success: false, error: 'Expected array' } }];\n  }\n  \n  // 각 아이디어를 개별 아이템으로 변환\n  return ideas.map((idea, index) => ({\n    json: {\n      idea_index: index + 1,\n      ...idea\n    }\n  }));\n} catch (error) {\n  return [{ json: { success: false, error: error.message, raw: cleaned } }];\n}"
+      },
+      "id": "ideas-parser",
+      "name": "아이디어 Parser",
+      "type": "n8n-nodes-base.code",
+      "position": [2500, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=당신은 투자 심사역입니다.\n\n다음 스타트업 아이디어를 평가하세요:\n{{ JSON.stringify($json, null, 2) }}\n\nJSON으로 응답:\n{\n  \"아이디어_제목\": \"{{ $json.아이디어_제목 }}\",\n  \"종합_평가\": \"추천\",\n  \"점수\": {\n    \"시장_매력도\": \"8\",\n    \"기술_실현성\": \"9\",\n    \"수익_가능성\": \"7\",\n    \"경쟁_우위\": \"6\",\n    \"종합_점수\": \"7.5\"\n  },\n  \"강점\": [\"명확한 pain point\", \"기술 스택 검증됨\"],\n  \"약점\": [\"경쟁 심화\", \"마케팅 비용 높음\"],\n  \"리스크\": [\"시장 변화\", \"기술 의존성\"],\n  \"권장_사항\": [\"MVP 3개월 내 출시\", \"베타 테스터 50명 확보\"],\n  \"투자_의견\": \"신중_추천\",\n  \"예상_성공률\": \"65\"\n}\n\n한국어로 작성",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "evaluation-agent",
+      "name": "아이디어 평가 Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [2800, 300],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "jsCode": "// JSON 정제\nconst data = $input.first().json.output;\n\nif (!data || typeof data !== 'string') {\n  return [{ json: { success: false, error: 'Invalid input' } }];\n}\n\nlet cleaned = data\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\ntry {\n  return [{ json: { success: true, evaluation: JSON.parse(cleaned) } }];\n} catch (error) {\n  return [{ json: { success: false, error: error.message, raw: cleaned } }];\n}"
+      },
+      "id": "evaluation-parser",
+      "name": "평가 Parser",
+      "type": "n8n-nodes-base.code",
+      "position": [3100, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "all_evaluations",
+        "options": {}
+      },
+      "id": "aggregate-evaluations",
+      "name": "평가 결과 집계",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [3400, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// 최종 리포트 생성\nconst evaluations = $input.first().json.all_evaluations;\nconst trendData = $('트렌드 분석 Parser').first().json.cleaned;\nconst collectionStats = $('중복 제거 및 정제').first().json.stats;\n\n// 점수 기준 정렬\nconst sortedIdeas = evaluations\n  .filter(e => e.evaluation)\n  .sort((a, b) => {\n    const scoreA = parseFloat(a.evaluation.점수?.종합_점수 || 0);\n    const scoreB = parseFloat(b.evaluation.점수?.종합_점수 || 0);\n    return scoreB - scoreA;\n  });\n\n// Top 10 선정\nconst top10 = sortedIdeas.slice(0, 10);\n\n// 종합 통계\nconst avgScore = top10.reduce((sum, item) => {\n  return sum + parseFloat(item.evaluation.점수?.종합_점수 || 0);\n}, 0) / top10.length;\n\n// 최종 리포트\nconst report = {\n  리포트_메타: {\n    생성일시: new Date().toISOString(),\n    보고서_제목: `주간 스타트업 아이디어 분석 리포트 ${new Date().toISOString().split('T')[0]}`,\n    분석_기간: '최근 7일',\n    버전: '1.0'\n  },\n  데이터_수집_통계: collectionStats,\n  트렌드_분석: trendData,\n  상위_10대_아이디어: top10.map((item, index) => ({\n    순위: index + 1,\n    ...item.evaluation\n  })),\n  종합_인사이트: {\n    평균_점수: avgScore.toFixed(2),\n    추천_아이디어_수: top10.filter(i => i.evaluation.투자_의견?.includes('추천')).length,\n    고위험_아이디어_수: top10.filter(i => parseFloat(i.evaluation.예상_성공률) < 50).length,\n    최고_점수_아이디어: top10[0]?.evaluation.아이디어_제목 || '없음',\n    주요_트렌드_키워드: trendData.주요_트렌드?.map(t => t.트렌드).slice(0, 5) || []\n  },\n  실행_권장사항: {\n    우선순위_1: top10[0]?.evaluation.아이디어_제목 || '없음',\n    우선순위_2: top10[1]?.evaluation.아이디어_제목 || '없음',\n    우선순위_3: top10[2]?.evaluation.아이디어_제목 || '없음',\n    즉시_실행_가능: top10.filter(i => {\n      const score = parseFloat(i.evaluation.점수?.기술_실현성 || 0);\n      return score >= 8;\n    }).map(i => i.evaluation.아이디어_제목)\n  }\n};\n\nreturn [{ json: report }];"
+      },
+      "id": "final-report",
+      "name": "최종 리포트 생성",
+      "type": "n8n-nodes-base.code",
+      "position": [3700, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Notion 페이지 구조 생성\nconst report = $input.first().json;\n\n// Rich text 헬퍼\nfunction rt(text, bold = false, color = 'default') {\n  return [{\n    type: 'text',\n    text: { content: String(text || ''), link: null },\n    annotations: { bold, color }\n  }];\n}\n\n// 블록 생성\nfunction block(type, content, extra = {}) {\n  const b = { object: 'block', type };\n  const c = { rich_text: rt(content), color: 'default', ...extra };\n  b[type] = c;\n  return b;\n}\n\nconst blocks = [];\n\n// 1. 헤더\nblocks.push(block('heading_1', '📊 주간 스타트업 아이디어 분석 리포트'));\nblocks.push(block('paragraph', `📅 ${report.리포트_메타.생성일시.split('T')[0]} | 분석기간: ${report.리포트_메타.분석_기간}`));\nblocks.push(block('divider', ''));\n\n// 2. 핵심 요약\nblocks.push(block('heading_2', '🎯 핵심 요약'));\nblocks.push(block('paragraph', `✅ 총 ${report.상위_10대_아이디어.length}개 아이디어 분석 완료`));\nblocks.push(block('paragraph', `⭐ 평균 종합 점수: ${report.종합_인사이트.평균_점수}/10`));\nblocks.push(block('paragraph', `🏆 최고 점수: ${report.종합_인사이트.최고_점수_아이디어}`));\nblocks.push(block('paragraph', `✨ 추천 아이디어: ${report.종합_인사이트.추천_아이디어_수}개`));\n\n// 3. 데이터 수집 통계\nblocks.push(block('heading_2', '📈 데이터 수집 통계'));\nblocks.push(block('bulleted_list_item', `총 수집: ${report.데이터_수집_통계.total_collected}개 게시글`));\nblocks.push(block('bulleted_list_item', `Reddit: ${report.데이터_수집_통계.reddit_count}개`));\nblocks.push(block('bulleted_list_item', `Hacker News: ${report.데이터_수집_통계.hn_count}개`));\nblocks.push(block('bulleted_list_item', `Dev.to: ${report.데이터_수집_통계.devto_count}개`));\nblocks.push(block('bulleted_list_item', `고유 게시글: ${report.데이터_수집_통계.unique_posts}개`));\n\n// 4. 주요 트렌드\nblocks.push(block('heading_2', '🔥 주요 트렌드'));\nif (report.트렌드_분석.주요_트렌드) {\n  report.트렌드_분석.주요_트렌드.slice(0, 5).forEach((trend, i) => {\n    blocks.push(block('numbered_list_item', `${trend.트렌드} (${trend.성장세}, 언급: ${trend.언급_빈도})`));\n  });\n}\n\n// 5. 핵심 Pain Points\nblocks.push(block('heading_2', '⚠️ 핵심 Pain Points'));\nif (report.트렌드_분석.핵심_페인포인트) {\n  report.트렌드_분석.핵심_페인포인트.slice(0, 5).forEach(pain => {\n    blocks.push(block('numbered_list_item', `${pain.문제} (심각도: ${pain.심각도}/10, 영향: ${pain.영향_범위})`));\n  });\n}\n\n// 6. Top 10 아이디어\nblocks.push(block('heading_2', '🚀 상위 10대 아이디어'));\nreport.상위_10대_아이디어.forEach((idea, index) => {\n  const score = idea.점수?.종합_점수 || '?';\n  const title = `${index + 1}. ${idea.아이디어_제목} (${score}/10)`;\n  \n  // Toggle 블록으로 상세 정보\n  const details = [\n    block('paragraph', `📊 종합 평가: ${idea.종합_평가 || '미평가'}`),\n    block('paragraph', `💰 투자 의견: ${idea.투자_의견 || '미정'}`),\n    block('paragraph', `📈 예상 성공률: ${idea.예상_성공률 || '?'}%`),\n    block('heading_3', '점수'),\n    block('bulleted_list_item', `시장 매력도: ${idea.점수?.시장_매력도 || '?'}/10`),\n    block('bulleted_list_item', `기술 실현성: ${idea.점수?.기술_실현성 || '?'}/10`),\n    block('bulleted_list_item', `수익 가능성: ${idea.점수?.수익_가능성 || '?'}/10`),\n    block('bulleted_list_item', `경쟁 우위: ${idea.점수?.경쟁_우위 || '?'}/10`)\n  ];\n  \n  if (idea.강점 && idea.강점.length > 0) {\n    details.push(block('heading_3', '✅ 강점'));\n    idea.강점.forEach(s => details.push(block('bulleted_list_item', s)));\n  }\n  \n  if (idea.약점 && idea.약점.length > 0) {\n    details.push(block('heading_3', '⚠️ 약점'));\n    idea.약점.forEach(w => details.push(block('bulleted_list_item', w)));\n  }\n  \n  if (idea.권장_사항 && idea.권장_사항.length > 0) {\n    details.push(block('heading_3', '💡 권장사항'));\n    idea.권장_사항.forEach(r => details.push(block('to_do', r, { checked: false })));\n  }\n  \n  blocks.push({\n    object: 'block',\n    type: 'toggle',\n    toggle: {\n      rich_text: rt(title, true),\n      color: 'default',\n      children: details\n    }\n  });\n});\n\n// 7. 실행 권장사항\nblocks.push(block('heading_2', '📋 실행 권장사항'));\nblocks.push(block('paragraph', `🥇 최우선: ${report.실행_권장사항.우선순위_1}`));\nblocks.push(block('paragraph', `🥈 2순위: ${report.실행_권장사항.우선순위_2}`));\nblocks.push(block('paragraph', `🥉 3순위: ${report.실행_권장사항.우선순위_3}`));\n\nif (report.실행_권장사항.즉시_실행_가능.length > 0) {\n  blocks.push(block('paragraph', '⚡ 즉시 실행 가능:'));\n  report.실행_권장사항.즉시_실행_가능.forEach(idea => {\n    blocks.push(block('bulleted_list_item', idea));\n  });\n}\n\nreturn [{\n  json: {\n    title: report.리포트_메타.보고서_제목,\n    blocks: blocks,\n    block_count: blocks.length\n  }\n}];"
+      },
+      "id": "notion-blocks",
+      "name": "Notion 블록 생성",
+      "type": "n8n-nodes-base.code",
+      "position": [4000, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "pageId": {
+          "__rl": true,
+          "value": "https://www.notion.so/2aa4858cf1d680a7ae52c6bea5cf1ff9",
+          "mode": "url"
+        },
+        "title": "={{ $json.title }}",
+        "options": {}
+      },
+      "id": "notion-create-page",
+      "name": "Notion 페이지 생성",
+      "type": "n8n-nodes-base.notion",
+      "position": [4300, 300],
+      "typeVersion": 2.2,
+      "credentials": {
+        "notionApi": {
+          "id": "UxltXJq57ONF5gRy",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.notion.com/v1/blocks/{{ $json.id }}/children",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ children: $('Notion 블록 생성').item.json.blocks }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "notion-add-blocks",
+      "name": "Notion 블록 추가",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [4600, 300],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "UxltXJq57ONF5gRy",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "type": "string",
+              "value": "success"
+            },
+            {
+              "id": "message",
+              "name": "message",
+              "type": "string",
+              "value": "=✅ 주간 분석 리포트 생성 완료"
+            },
+            {
+              "id": "page_title",
+              "name": "page_title",
+              "type": "string",
+              "value": "={{ $('Notion 블록 생성').item.json.title }}"
+            },
+            {
+              "id": "blocks_created",
+              "name": "blocks_created",
+              "type": "number",
+              "value": "={{ $('Notion 블록 생성').item.json.block_count }}"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "type": "string",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "final-output",
+      "name": "최종 완료",
+      "type": "n8n-nodes-base.set",
+      "position": [4900, 300],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-exp",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "gemini-model",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "position": [1600, 600],
+      "typeVersion": 1,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "dAdxxYvzT4cKOYVR",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "weekly-trend-analysis"
+      },
+      "id": "memory",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [1600, 800],
+      "typeVersion": 1.3
+    }
+  ],
+  "connections": {
+    "주간 실행 트리거": {
+      "main": [
+        [
+          {
+            "node": "Reddit 데이터 수집",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Hacker News RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dev.to 데이터 수집",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "수동 실행": {
+      "main": [
+        [
+          {
+            "node": "Reddit 데이터 수집",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Hacker News RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dev.to 데이터 수집",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit 데이터 수집": {
+      "main": [
+        [
+          {
+            "node": "Reddit 파싱",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hacker News RSS": {
+      "main": [
+        [
+          {
+            "node": "Hacker News 파싱",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dev.to 데이터 수집": {
+      "main": [
+        [
+          {
+            "node": "Dev.to 파싱",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit 파싱": {
+      "main": [
+        [
+          {
+            "node": "데이터 소스 병합",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hacker News 파싱": {
+      "main": [
+        [
+          {
+            "node": "데이터 소스 병합",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Dev.to 파싱": {
+      "main": [
+        [
+          {
+            "node": "데이터 소스 병합",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "데이터 소스 병합": {
+      "main": [
+        [
+          {
+            "node": "중복 제거 및 정제",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "중복 제거 및 정제": {
+      "main": [
+        [
+          {
+            "node": "트렌드 분석 Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "트렌드 분석 Agent": {
+      "main": [
+        [
+          {
+            "node": "트렌드 분석 Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "트렌드 분석 Parser": {
+      "main": [
+        [
+          {
+            "node": "아이디어 생성 Agent (10개)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "아이디어 생성 Agent (10개)": {
+      "main": [
+        [
+          {
+            "node": "아이디어 Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "아이디어 Parser": {
+      "main": [
+        [
+          {
+            "node": "아이디어 평가 Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "아이디어 평가 Agent": {
+      "main": [
+        [
+          {
+            "node": "평가 Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "평가 Parser": {
+      "main": [
+        [
+          {
+            "node": "평가 결과 집계",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "평가 결과 집계": {
+      "main": [
+        [
+          {
+            "node": "최종 리포트 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "최종 리포트 생성": {
+      "main": [
+        [
+          {
+            "node": "Notion 블록 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion 블록 생성": {
+      "main": [
+        [
+          {
+            "node": "Notion 페이지 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion 페이지 생성": {
+      "main": [
+        [
+          {
+            "node": "Notion 블록 추가",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion 블록 추가": {
+      "main": [
+        [
+          {
+            "node": "최종 완료",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "트렌드 분석 Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "아이디어 생성 Agent (10개)",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "아이디어 평가 Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "트렌드 분석 Agent",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "아이디어 생성 Agent (10개)",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "아이디어 평가 Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-15T00:00:00.000Z",
+  "versionId": "1"
+}
