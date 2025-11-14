@@ -1,0 +1,508 @@
+{
+  "name": "Design Pattern Deep Research to Notion",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "id": "manual-trigger-1"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "pattern-name",
+              "name": "patternName",
+              "type": "string",
+              "value": "={{ $json.patternName || \"Redux Toolkit\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Set Pattern Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [460, 300],
+      "id": "set-input-1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $credentials.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Generate 3 optimized English search queries for technical documentation research about: {{ $json.patternName }}\\n\\nRequirements:\\n1. First query: Focus on official documentation/guides\\n2. Second query: Focus on real-world use cases and examples\\n3. Third query: Focus on latest best practices (2024-2025)\\n\\nReturn ONLY a JSON array of 3 strings, no explanation:\\n[\\\"query1\\\", \\\"query2\\\", \\\"query3\\\"]\"\n    }]\n  }]\n}",
+        "options": {}
+      },
+      "name": "Gemini Query Optimizer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "id": "gemini-optimizer-1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gemini response and extract queries\nconst response = $input.item.json;\nconst text = response.candidates[0].content.parts[0].text;\n\n// Extract JSON array from text\nconst jsonMatch = text.match(/\\[.*\\]/s);\nif (!jsonMatch) {\n  throw new Error('Failed to extract queries from Gemini response');\n}\n\nconst queries = JSON.parse(jsonMatch[0]);\n\n// Return array of query objects\nreturn queries.map((query, index) => ({\n  json: {\n    query: query,\n    queryIndex: index + 1,\n    patternName: $input.item.json.patternName\n  }\n}));"
+      },
+      "name": "Parse Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "id": "parse-queries-1"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://serpapi.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "api_key",
+              "value": "={{ $credentials.serpApiKey }}"
+            },
+            {
+              "name": "num",
+              "value": "5"
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "SerpAPI Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "id": "serpapi-1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter and rank search results\nconst items = $input.all();\nconst allResults = [];\n\n// Extract all organic results from all queries\nfor (const item of items) {\n  const results = item.json.organic_results || [];\n  \n  for (const result of results) {\n    const url = result.link;\n    const domain = new URL(url).hostname;\n    \n    // Priority scoring\n    let score = 0;\n    \n    // Official domains (high priority)\n    if (domain.includes('github.com') || \n        domain.includes('docs.') || \n        domain.includes('.dev') ||\n        domain.includes('npmjs.com') ||\n        domain.includes('reactjs.org') ||\n        domain.includes('redux.js.org')) {\n      score += 10;\n    }\n    \n    // Trusted tech blogs (medium priority)\n    if (domain.includes('medium.com') ||\n        domain.includes('dev.to') ||\n        domain.includes('css-tricks.com') ||\n        domain.includes('smashingmagazine.com') ||\n        domain.includes('freecodecamp.org')) {\n      score += 5;\n    }\n    \n    // Avoid certain domains\n    if (domain.includes('stackoverflow.com') ||\n        domain.includes('reddit.com') ||\n        domain.includes('quora.com')) {\n      score -= 5;\n    }\n    \n    allResults.push({\n      url: url,\n      title: result.title,\n      snippet: result.snippet,\n      domain: domain,\n      score: score\n    });\n  }\n}\n\n// Remove duplicates by URL\nconst uniqueResults = [];\nconst seenUrls = new Set();\n\nfor (const result of allResults) {\n  if (!seenUrls.has(result.url)) {\n    seenUrls.add(result.url);\n    uniqueResults.push(result);\n  }\n}\n\n// Sort by score and take top 5\nconst topResults = uniqueResults\n  .sort((a, b) => b.score - a.score)\n  .slice(0, 5);\n\n// Return as separate items for next loop\nreturn topResults.map(result => ({\n  json: {\n    url: result.url,\n    title: result.title,\n    snippet: result.snippet,\n    domain: result.domain,\n    patternName: items[0].json.patternName\n  }\n}));"
+      },
+      "name": "Filter & Rank Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "id": "filter-results-1"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          }
+        }
+      },
+      "name": "Scrape Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300],
+      "id": "scrape-content-1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse HTML and extract main content using cheerio\nconst cheerio = require('cheerio');\nconst html = $input.item.json.data || $input.item.json.body || '';\n\nif (!html) {\n  return [{\n    json: {\n      url: $input.item.json.url,\n      title: $input.item.json.title,\n      content: $input.item.json.snippet || '',\n      contentLength: 0,\n      patternName: $input.item.json.patternName\n    }\n  }];\n}\n\nconst $ = cheerio.load(html);\n\n// Remove unwanted elements\n$('script, style, nav, header, footer, iframe, noscript, .ad, .advertisement, .sidebar').remove();\n\n// Try to find main content area\nlet content = '';\n\n// Priority selectors for main content\nconst selectors = [\n  'article',\n  'main',\n  '.content',\n  '.post-content',\n  '.article-content',\n  '.entry-content',\n  '#content',\n  '.markdown-body', // GitHub\n  '[role=\"main\"]'\n];\n\nfor (const selector of selectors) {\n  const element = $(selector).first();\n  if (element.length > 0) {\n    content = element.text();\n    break;\n  }\n}\n\n// Fallback to body if no main content found\nif (!content) {\n  content = $('body').text();\n}\n\n// Clean up whitespace\ncontent = content\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 15000); // Limit to 15k chars per page\n\nreturn [{\n  json: {\n    url: $input.item.json.url,\n    title: $input.item.json.title,\n    content: content,\n    contentLength: content.length,\n    patternName: $input.item.json.patternName\n  }\n}];"
+      },
+      "name": "Parse HTML Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300],
+      "id": "parse-html-1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "name": "Aggregate Content",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [2000, 300],
+      "id": "aggregate-content-1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $credentials.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"You are a React expert. Based on the following research materials, write a comprehensive guide about {{ $json[0].patternName }}:\\n\\n{% for item in $json %}\\nSource {{ loop.index }}: {{ item.title }}\\n{{ item.content }}\\n\\n{% endfor %}\\n\\nWrite in the following format (use Markdown):\\n\\n# Overview\\n[2-3 sentences explaining what it is]\\n\\n# Key Concepts\\n- [Concept 1]\\n- [Concept 2]\\n- [Concept 3]\\n- [Concept 4]\\n- [Concept 5]\\n\\n# Advantages\\n- [Advantage 1]\\n- [Advantage 2]\\n- [Advantage 3]\\n\\n# Disadvantages\\n- [Disadvantage 1]\\n- [Disadvantage 2]\\n- [Disadvantage 3]\\n\\n# Use Cases\\n1. [Specific scenario 1]\\n2. [Specific scenario 2]\\n3. [Specific scenario 3]\\n\\n# Setup Guide\\n1. [Step 1]\\n2. [Step 2]\\n3. [Step 3]\\n4. [Step 4]\\n\\nBe clear, practical, and focus on actionable information.\"\n    }]\n  }]\n}",
+        "options": {}
+      },
+      "name": "Gemini Content Analyzer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 300],
+      "id": "gemini-analyzer-1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $credentials.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Generate a TypeScript code example for: {{ $json[0].patternName }}\\n\\nRequirements:\\n- 15-25 lines of concise code\\n- Use TypeScript and modern React (hooks)\\n- Include practical, working code\\n- Add brief inline comments for clarity\\n- Include necessary import statements\\n- Must be a complete, runnable example\\n\\nReturn ONLY the code, no additional explanation.\"\n    }]\n  }]\n}",
+        "options": {}
+      },
+      "name": "Gemini Code Generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2440, 300],
+      "id": "gemini-code-1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gemini responses and format for Notion\nconst contentResponse = $input.first().json;\nconst codeResponse = $input.last().json;\n\n// Extract text from Gemini responses\nconst analysisText = contentResponse.candidates[0].content.parts[0].text;\nconst codeText = codeResponse.candidates[0].content.parts[0].text;\n\n// Extract code block from markdown\nlet cleanCode = codeText;\nconst codeMatch = codeText.match(/```(?:typescript|tsx|ts)?\\n([\\s\\S]*?)```/);\nif (codeMatch) {\n  cleanCode = codeMatch[1].trim();\n}\n\n// Parse markdown sections\nconst sections = {};\nconst sectionRegex = /# (.+?)\\n([\\s\\S]*?)(?=\\n# |$)/g;\nlet match;\n\nwhile ((match = sectionRegex.exec(analysisText)) !== null) {\n  const heading = match[1].trim();\n  const content = match[2].trim();\n  sections[heading] = content;\n}\n\n// Get pattern name and sources\nconst patternName = $input.first().json[0]?.patternName || 'Design Pattern';\nconst sources = $input.first().json.map(item => ({\n  url: item.url,\n  title: item.title\n})).filter(s => s.url);\n\nreturn [{\n  json: {\n    patternName: patternName,\n    overview: sections['Overview'] || '',\n    keyConcepts: sections['Key Concepts'] || '',\n    advantages: sections['Advantages'] || '',\n    disadvantages: sections['Disadvantages'] || '',\n    useCases: sections['Use Cases'] || '',\n    setupGuide: sections['Setup Guide'] || '',\n    codeExample: cleanCode,\n    sources: sources,\n    createdAt: new Date().toISOString()\n  }\n}];"
+      },
+      "name": "Format for Notion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 300],
+      "id": "format-notion-1"
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "operation": "create",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $credentials.notionParentPageId }}"
+        },
+        "title": "={{ $json.patternName }} - Design Pattern",
+        "blockUi": {
+          "blockValues": [
+            {
+              "type": "heading_2",
+              "richText": false,
+              "textContent": "📋 Overview"
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": "={{ $json.overview }}"
+            },
+            {
+              "type": "heading_2",
+              "richText": false,
+              "textContent": "🔑 Key Concepts"
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": "={{ $json.keyConcepts }}"
+            },
+            {
+              "type": "heading_2",
+              "richText": false,
+              "textContent": "✅ Advantages"
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": "={{ $json.advantages }}"
+            },
+            {
+              "type": "heading_2",
+              "richText": false,
+              "textContent": "⚠️ Disadvantages"
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": "={{ $json.disadvantages }}"
+            },
+            {
+              "type": "heading_2",
+              "richText": false,
+              "textContent": "💡 Use Cases"
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": "={{ $json.useCases }}"
+            },
+            {
+              "type": "heading_2",
+              "richText": false,
+              "textContent": "⚙️ Setup Guide"
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": "={{ $json.setupGuide }}"
+            },
+            {
+              "type": "heading_2",
+              "richText": false,
+              "textContent": "💻 Code Example"
+            },
+            {
+              "type": "code",
+              "richText": false,
+              "textContent": "={{ $json.codeExample }}",
+              "language": "typescript"
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": " "
+            },
+            {
+              "type": "heading_2",
+              "richText": false,
+              "textContent": "🔗 Sources"
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": "={{ $json.sources.map(s => `• ${s.title}: ${s.url}`).join('\\n') }}"
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": " "
+            },
+            {
+              "type": "paragraph",
+              "richText": false,
+              "textContent": "=Generated on: {{ $json.createdAt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Create Notion Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [2880, 300],
+      "id": "notion-create-1",
+      "credentials": {
+        "notionApi": {
+          "id": "notion-credentials",
+          "name": "Notion API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Pattern Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Pattern Input": {
+      "main": [
+        [
+          {
+            "node": "Gemini Query Optimizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Query Optimizer": {
+      "main": [
+        [
+          {
+            "node": "Parse Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Queries": {
+      "main": [
+        [
+          {
+            "node": "SerpAPI Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI Search": {
+      "main": [
+        [
+          {
+            "node": "Filter & Rank Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter & Rank Results": {
+      "main": [
+        [
+          {
+            "node": "Scrape Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Content": {
+      "main": [
+        [
+          {
+            "node": "Parse HTML Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse HTML Content": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Content": {
+      "main": [
+        [
+          {
+            "node": "Gemini Content Analyzer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gemini Code Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Content Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Format for Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Code Generator": {
+      "main": [
+        [
+          {
+            "node": "Format for Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for Notion": {
+      "main": [
+        [
+          {
+            "node": "Create Notion Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-14T12:00:00.000Z",
+  "versionId": ""
+}
