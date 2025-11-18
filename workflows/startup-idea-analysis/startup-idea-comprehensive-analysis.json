@@ -148,33 +148,33 @@
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "=당신은 기술 트렌드 분석 전문가입니다.\n\n다음 개발자 포럼 게시글들을 분석하여 **주간 기술 트렌드 리포트**를 작성하세요.\n\n수집된 데이터:\n- 총 게시글 수: {{ $json.stats.total_collected }}\n- Reddit: {{ $json.stats.reddit_count }}개\n- Hacker News: {{ $json.stats.hn_count }}개\n- Dev.to: {{ $json.stats.devto_count }}개\n\n주요 게시글:\n{{ JSON.stringify($json.posts.slice(0, 50), null, 2) }}\n\n다음 JSON 구조로만 응답하세요:\n{\n  \"report_date\": \"2024-01-15\",\n  \"주요_트렌드\": [\n    {\"트렌드\": \"AI 코드 생성 도구\", \"언급_빈도\": \"높음\", \"성장세\": \"급상승\"},\n    {\"트렌드\": \"서버리스 아키텍처\", \"언급_빈도\": \"중간\", \"성장세\": \"안정적\"}\n  ],\n  \"핵심_페인포인트\": [\n    {\"문제\": \"코드 리뷰 시간 소요\", \"심각도\": \"9\", \"영향_범위\": \"중소 개발팀\"},\n    {\"문제\": \"배포 자동화 복잡성\", \"심각도\": \"8\", \"영향_범위\": \"스타트업\"}\n  ],\n  \"떠오르는_기술\": [\n    {\"기술명\": \"Rust\", \"관심도\": \"8\", \"채택률_변화\": \"증가\"},\n    {\"기술명\": \"Bun.js\", \"관심도\": \"7\", \"채택률_변화\": \"신규\"}\n  ],\n  \"인기_주제\": [\n    {\"주제\": \"LLM 통합\", \"게시글_수\": \"15\", \"평균_반응\": \"긍정적\"},\n    {\"주제\": \"개발자 생산성\", \"게시글_수\": \"12\", \"평균_반응\": \"중립\"}\n  ],\n  \"시장_기회\": [\n    {\"영역\": \"개발자 도구\", \"기회_점수\": \"9\", \"경쟁_수준\": \"중간\"},\n    {\"영역\": \"AI SaaS\", \"기회_점수\": \"8\", \"경쟁_수준\": \"높음\"}\n  ]\n}\n\n중요:\n1. JSON만 출력 (백틱 없이)\n2. 모든 텍스트는 한국어로\n3. 점수는 문자열 \"1-10\"",
-        "hasOutputParser": true,
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-exp:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $credentials.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"당신은 기술 트렌드 분석 전문가입니다.\\n\\n다음 개발자 포럼 게시글들을 분석하여 **주간 기술 트렌드 리포트**를 작성하세요.\\n\\n수집된 데이터:\\n- 총 게시글 수: {{ $json.stats.total_collected }}\\n- Reddit: {{ $json.stats.reddit_count }}개\\n- Hacker News: {{ $json.stats.hn_count }}개\\n- Dev.to: {{ $json.stats.devto_count }}개\\n\\n주요 게시글:\\n{{ JSON.stringify($json.posts.slice(0, 50), null, 2) }}\\n\\n다음 JSON 구조로만 응답하세요:\\n{\\n  \\\"report_date\\\": \\\"2024-01-15\\\",\\n  \\\"주요_트렌드\\\": [\\n    {\\\"트렌드\\\": \\\"AI 코드 생성 도구\\\", \\\"언급_빈도\\\": \\\"높음\\\", \\\"성장세\\\": \\\"급상승\\\"},\\n    {\\\"트렌드\\\": \\\"서버리스 아키텍처\\\", \\\"언급_빈도\\\": \\\"중간\\\", \\\"성장세\\\": \\\"안정적\\\"}\\n  ],\\n  \\\"핵심_페인포인트\\\": [\\n    {\\\"문제\\\": \\\"코드 리뷰 시간 소요\\\", \\\"심각도\\\": \\\"9\\\", \\\"영향_범위\\\": \\\"중소 개발팀\\\"},\\n    {\\\"문제\\\": \\\"배포 자동화 복잡성\\\", \\\"심각도\\\": \\\"8\\\", \\\"영향_범위\\\": \\\"스타트업\\\"}\\n  ],\\n  \\\"떠오르는_기술\\\": [\\n    {\\\"기술명\\\": \\\"Rust\\\", \\\"관심도\\\": \\\"8\\\", \\\"채택률_변화\\\": \\\"증가\\\"},\\n    {\\\"기술명\\\": \\\"Bun.js\\\", \\\"관심도\\\": \\\"7\\\", \\\"채택률_변화\\\": \\\"신규\\\"}\\n  ],\\n  \\\"인기_주제\\\": [\\n    {\\\"주제\\\": \\\"LLM 통합\\\", \\\"게시글_수\\\": \\\"15\\\", \\\"평균_반응\\\": \\\"긍정적\\\"},\\n    {\\\"주제\\\": \\\"개발자 생산성\\\", \\\"게시글_수\\\": \\\"12\\\", \\\"평균_반응\\\": \\\"중립\\\"}\\n  ],\\n  \\\"시장_기회\\\": [\\n    {\\\"영역\\\": \\\"개발자 도구\\\", \\\"기회_점수\\\": \\\"9\\\", \\\"경쟁_수준\\\": \\\"중간\\\"},\\n    {\\\"영역\\\": \\\"AI SaaS\\\", \\\"기회_점수\\\": \\\"8\\\", \\\"경쟁_수준\\\": \\\"높음\\\"}\\n  ]\\n}\\n\\n중요:\\n1. JSON만 출력 (백틱 없이)\\n2. 모든 텍스트는 한국어로\\n3. 점수는 문자열 \\\"1-10\\\"\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.4,\n    \"topK\": 40,\n    \"topP\": 0.95,\n    \"maxOutputTokens\": 4096\n  }\n}",
         "options": {}
       },
-      "id": "trend-analysis-agent",
-      "name": "트렌드 분석 Agent",
-      "type": "@n8n/n8n-nodes-langchain.agent",
+      "id": "trend-analysis-gemini",
+      "name": "Gemini 트렌드 분석",
+      "type": "n8n-nodes-base.httpRequest",
       "position": [1600, 300],
-      "typeVersion": 2.1
+      "typeVersion": 4.2
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "=당신은 스타트업 기회 발굴 전문가입니다.\n\n트렌드 분석 결과:\n{{ $json.cleaned }}\n\n이 데이터를 기반으로 **실현 가능한 스타트업 아이디어 10개**를 생성하세요.\n\n조건:\n1. 실제 pain point 해결\n2. 기술적으로 구현 가능\n3. 시장 규모 충분\n4. 차별화 포인트 명확\n\nJSON 배열로 응답:\n[\n  {\n    \"순위\": \"1\",\n    \"아이디어_제목\": \"AI 기반 코드 리뷰 자동화 SaaS\",\n    \"핵심_컨셉\": \"GitHub PR 자동 분석 및 개선 제안\",\n    \"해결_문제\": \"코드 리뷰 시간 70% 절감\",\n    \"타겟_시장\": \"중소 개발팀 (10-50명)\",\n    \"기술_스택\": \"Python, LangChain, FastAPI, React\",\n    \"비즈니스_모델\": \"월 $99-499 구독\",\n    \"차별화_요소\": \"팀 코딩 스타일 학습 및 맞춤 제안\",\n    \"시장_규모\": \"$5억 (글로벌)\",\n    \"실현_가능성\": \"9\",\n    \"혁신성_점수\": \"8\",\n    \"수익성_점수\": \"7\"\n  }\n]\n\n중요:\n1. 정확히 10개 아이디어\n2. JSON 배열만 출력\n3. 한국어로 작성\n4. 점수는 문자열",
-        "hasOutputParser": true,
-        "options": {}
-      },
-      "id": "idea-generation-agent",
-      "name": "아이디어 생성 Agent (10개)",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "position": [2200, 300],
-      "typeVersion": 2.1
-    },
-    {
-      "parameters": {
-        "jsCode": "// JSON 정제\nconst data = $input.first().json.output;\n\nif (!data || typeof data !== 'string') {\n  return [{ json: { success: false, error: 'Invalid input' } }];\n}\n\nlet cleaned = data\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\ntry {\n  return [{ json: { success: true, cleaned: JSON.parse(cleaned) } }];\n} catch (error) {\n  return [{ json: { success: false, error: error.message, raw: cleaned } }];\n}"
+        "jsCode": "// Gemini 응답에서 JSON 추출\nconst response = $input.first().json;\n\ntry {\n  const text = response.candidates[0].content.parts[0].text;\n  \n  // 백틱 제거\n  let cleaned = text\n    .replace(/```json/gi, '')\n    .replace(/```/g, '')\n    .trim();\n  \n  const parsed = JSON.parse(cleaned);\n  \n  return [{ json: { success: true, cleaned: parsed } }];\n} catch (error) {\n  return [{ json: { success: false, error: error.message, raw: response } }];\n}"
       },
       "id": "trend-parser",
       "name": "트렌드 분석 Parser",
@@ -184,7 +184,33 @@
     },
     {
       "parameters": {
-        "jsCode": "// JSON 정제 및 배열 분리\nconst data = $input.first().json.output;\n\nif (!data || typeof data !== 'string') {\n  return [{ json: { success: false, error: 'Invalid input' } }];\n}\n\nlet cleaned = data\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\ntry {\n  const ideas = JSON.parse(cleaned);\n  \n  if (!Array.isArray(ideas)) {\n    return [{ json: { success: false, error: 'Expected array' } }];\n  }\n  \n  // 각 아이디어를 개별 아이템으로 변환\n  return ideas.map((idea, index) => ({\n    json: {\n      idea_index: index + 1,\n      ...idea\n    }\n  }));\n} catch (error) {\n  return [{ json: { success: false, error: error.message, raw: cleaned } }];\n}"
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-exp:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $credentials.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"당신은 스타트업 기회 발굴 전문가입니다.\\n\\n트렌드 분석 결과:\\n{{ JSON.stringify($json.cleaned, null, 2) }}\\n\\n이 데이터를 기반으로 **실현 가능한 스타트업 아이디어 10개**를 생성하세요.\\n\\n조건:\\n1. 실제 pain point 해결\\n2. 기술적으로 구현 가능\\n3. 시장 규모 충분\\n4. 차별화 포인트 명확\\n\\nJSON 배열로 응답:\\n[\\n  {\\n    \\\"순위\\\": \\\"1\\\",\\n    \\\"아이디어_제목\\\": \\\"AI 기반 코드 리뷰 자동화 SaaS\\\",\\n    \\\"핵심_컨셉\\\": \\\"GitHub PR 자동 분석 및 개선 제안\\\",\\n    \\\"해결_문제\\\": \\\"코드 리뷰 시간 70% 절감\\\",\\n    \\\"타겟_시장\\\": \\\"중소 개발팀 (10-50명)\\\",\\n    \\\"기술_스택\\\": \\\"Python, LangChain, FastAPI, React\\\",\\n    \\\"비즈니스_모델\\\": \\\"월 $99-499 구독\\\",\\n    \\\"차별화_요소\\\": \\\"팀 코딩 스타일 학습 및 맞춤 제안\\\",\\n    \\\"시장_규모\\\": \\\"$5억 (글로벌)\\\",\\n    \\\"실현_가능성\\\": \\\"9\\\",\\n    \\\"혁신성_점수\\\": \\\"8\\\",\\n    \\\"수익성_점수\\\": \\\"7\\\"\\n  }\\n]\\n\\n중요:\\n1. 정확히 10개 아이디어\\n2. JSON 배열만 출력\\n3. 한국어로 작성\\n4. 점수는 문자열\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.4,\n    \"topK\": 40,\n    \"topP\": 0.95,\n    \"maxOutputTokens\": 8192\n  }\n}",
+        "options": {}
+      },
+      "id": "idea-generation-gemini",
+      "name": "Gemini 아이디어 생성",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2200, 300],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini 응답에서 JSON 배열 추출 및 분리\nconst response = $input.first().json;\n\ntry {\n  const text = response.candidates[0].content.parts[0].text;\n  \n  // 백틱 제거\n  let cleaned = text\n    .replace(/```json/gi, '')\n    .replace(/```/g, '')\n    .trim();\n  \n  const ideas = JSON.parse(cleaned);\n  \n  if (!Array.isArray(ideas)) {\n    return [{ json: { success: false, error: 'Expected array' } }];\n  }\n  \n  // 각 아이디어를 개별 아이템으로 변환\n  return ideas.map((idea, index) => ({\n    json: {\n      idea_index: index + 1,\n      ...idea\n    }\n  }));\n} catch (error) {\n  return [{ json: { success: false, error: error.message, raw: response } }];\n}"
       },
       "id": "ideas-parser",
       "name": "아이디어 Parser",
@@ -194,20 +220,33 @@
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "=당신은 투자 심사역입니다.\n\n다음 스타트업 아이디어를 평가하세요:\n{{ JSON.stringify($json, null, 2) }}\n\nJSON으로 응답:\n{\n  \"아이디어_제목\": \"{{ $json.아이디어_제목 }}\",\n  \"종합_평가\": \"추천\",\n  \"점수\": {\n    \"시장_매력도\": \"8\",\n    \"기술_실현성\": \"9\",\n    \"수익_가능성\": \"7\",\n    \"경쟁_우위\": \"6\",\n    \"종합_점수\": \"7.5\"\n  },\n  \"강점\": [\"명확한 pain point\", \"기술 스택 검증됨\"],\n  \"약점\": [\"경쟁 심화\", \"마케팅 비용 높음\"],\n  \"리스크\": [\"시장 변화\", \"기술 의존성\"],\n  \"권장_사항\": [\"MVP 3개월 내 출시\", \"베타 테스터 50명 확보\"],\n  \"투자_의견\": \"신중_추천\",\n  \"예상_성공률\": \"65\"\n}\n\n한국어로 작성",
-        "hasOutputParser": true,
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-exp:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $credentials.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"당신은 투자 심사역입니다.\\n\\n다음 스타트업 아이디어를 평가하세요:\\n{{ JSON.stringify($json, null, 2) }}\\n\\nJSON으로 응답:\\n{\\n  \\\"아이디어_제목\\\": \\\"{{ $json.아이디어_제목 }}\\\",\\n  \\\"종합_평가\\\": \\\"추천\\\",\\n  \\\"점수\\\": {\\n    \\\"시장_매력도\\\": \\\"8\\\",\\n    \\\"기술_실현성\\\": \\\"9\\\",\\n    \\\"수익_가능성\\\": \\\"7\\\",\\n    \\\"경쟁_우위\\\": \\\"6\\\",\\n    \\\"종합_점수\\\": \\\"7.5\\\"\\n  },\\n  \\\"강점\\\": [\\\"명확한 pain point\\\", \\\"기술 스택 검증됨\\\"],\\n  \\\"약점\\\": [\\\"경쟁 심화\\\", \\\"마케팅 비용 높음\\\"],\\n  \\\"리스크\\\": [\\\"시장 변화\\\", \\\"기술 의존성\\\"],\\n  \\\"권장_사항\\\": [\\\"MVP 3개월 내 출시\\\", \\\"베타 테스터 50명 확보\\\"],\\n  \\\"투자_의견\\\": \\\"신중_추천\\\",\\n  \\\"예상_성공률\\\": \\\"65\\\"\\n}\\n\\n한국어로 작성\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.4,\n    \"topK\": 40,\n    \"topP\": 0.95,\n    \"maxOutputTokens\": 2048\n  }\n}",
         "options": {}
       },
-      "id": "evaluation-agent",
-      "name": "아이디어 평가 Agent",
-      "type": "@n8n/n8n-nodes-langchain.agent",
+      "id": "evaluation-gemini",
+      "name": "Gemini 아이디어 평가",
+      "type": "n8n-nodes-base.httpRequest",
       "position": [2800, 300],
-      "typeVersion": 2.1
+      "typeVersion": 4.2
     },
     {
       "parameters": {
-        "jsCode": "// JSON 정제\nconst data = $input.first().json.output;\n\nif (!data || typeof data !== 'string') {\n  return [{ json: { success: false, error: 'Invalid input' } }];\n}\n\nlet cleaned = data\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\ntry {\n  return [{ json: { success: true, evaluation: JSON.parse(cleaned) } }];\n} catch (error) {\n  return [{ json: { success: false, error: error.message, raw: cleaned } }];\n}"
+        "jsCode": "// Gemini 응답에서 JSON 추출\nconst response = $input.first().json;\n\ntry {\n  const text = response.candidates[0].content.parts[0].text;\n  \n  // 백틱 제거\n  let cleaned = text\n    .replace(/```json/gi, '')\n    .replace(/```/g, '')\n    .trim();\n  \n  const parsed = JSON.parse(cleaned);\n  \n  return [{ json: { success: true, evaluation: parsed } }];\n} catch (error) {\n  return [{ json: { success: false, error: error.message, raw: response } }];\n}"
       },
       "id": "evaluation-parser",
       "name": "평가 Parser",
@@ -354,36 +393,6 @@
       "type": "n8n-nodes-base.set",
       "position": [4900, 300],
       "typeVersion": 3.4
-    },
-    {
-      "parameters": {
-        "modelName": "models/gemini-2.0-flash-exp",
-        "options": {
-          "temperature": 0.4
-        }
-      },
-      "id": "gemini-model",
-      "name": "Google Gemini Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "position": [1600, 600],
-      "typeVersion": 1,
-      "credentials": {
-        "googlePalmApi": {
-          "id": "dAdxxYvzT4cKOYVR",
-          "name": "Google Gemini(PaLM) Api account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "weekly-trend-analysis"
-      },
-      "id": "memory",
-      "name": "Window Buffer Memory",
-      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-      "position": [1600, 800],
-      "typeVersion": 1.3
     }
   ],
   "connections": {
@@ -510,14 +519,14 @@
       "main": [
         [
           {
-            "node": "트렌드 분석 Agent",
+            "node": "Gemini 트렌드 분석",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "트렌드 분석 Agent": {
+    "Gemini 트렌드 분석": {
       "main": [
         [
           {
@@ -532,14 +541,14 @@
       "main": [
         [
           {
-            "node": "아이디어 생성 Agent (10개)",
+            "node": "Gemini 아이디어 생성",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "아이디어 생성 Agent (10개)": {
+    "Gemini 아이디어 생성": {
       "main": [
         [
           {
@@ -554,14 +563,14 @@
       "main": [
         [
           {
-            "node": "아이디어 평가 Agent",
+            "node": "Gemini 아이디어 평가",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "아이디어 평가 Agent": {
+    "Gemini 아이디어 평가": {
       "main": [
         [
           {
@@ -637,48 +646,6 @@
           }
         ]
       ]
-    },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "트렌드 분석 Agent",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "아이디어 생성 Agent (10개)",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "아이디어 평가 Agent",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Window Buffer Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "트렌드 분석 Agent",
-            "type": "ai_memory",
-            "index": 0
-          },
-          {
-            "node": "아이디어 생성 Agent (10개)",
-            "type": "ai_memory",
-            "index": 0
-          },
-          {
-            "node": "아이디어 평가 Agent",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "pinData": {},
@@ -688,6 +655,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2024-01-15T00:00:00.000Z",
+  "updatedAt": "2025-01-15T00:00:00.000Z",
   "versionId": "1"
 }
